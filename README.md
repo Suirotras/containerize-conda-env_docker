@@ -1,13 +1,14 @@
-# Containerize an existing conda environment
 
-I use conda environments for working on data analysis projects.
-Sometimes I need to revert to install using `pip` or `R`'s
+# Containerize an existing conda environment in a docker container
+
+I use conda environments for environment management during my data
+analysis projects. Sometimes I need to revert to install using `pip` or `R`'s
 `install.packages` if a package is not on bioconda or conda-forge.
 
-This makes it very hard to reproduce the environment, and therefore,
-the analysis, on another system. Even pure conda environments stored
-as an `environment.yml` file tend to [break after a
-while](https://github.com/conda/conda/issues/9257).
+To keep my code reproducible, and make sure my conda environments are portable,
+adapted code from another repository
+[https://github.com/grst/containerize-conda](https://github.com/grst/containerize-conda)
+to containerize my conda environments.
 
 Using the instructions below allows to package an existing environment
 into a Singularity container which should be more portable
@@ -19,28 +20,24 @@ based on e.g. [Nextflow](https://www.nextflow.io/).
 ## Usage
 
 ```
-usage: conda_to_singularity.py [-h] [--template TEMPLATE] CONDA_ENV OUTPUT_CONTAINER
+usage: conda_to_docker.py [-h] [--template TEMPLATE] CONDA_ENV OUTPUT_CONTAINER
 
 Convert a conda env to a singularity container.
 
 positional arguments:
   CONDA_ENV            Absolute path to the conda enviornment. Must be exactely the path as it shows up in `conda env list`, not a symbolic link to it, nor a realpath.
-  OUTPUT_CONTAINER     Output path where the singularity container will be safed.
+  OUTPUT_CONTAINER     Name of the docker image that will be created.
 
 optional arguments:
   -h, --help           show this help message and exit
-  --template TEMPLATE  Path to a Singularity template file. Must contain a `{conda_env}` placeholder. If not specified, uses the default template shipped with this script.
+  --template TEMPLATE  Path to the Dockerfile template. Must contain a `{conda_env}` placeholder. If not specified, uses the default template shipped with this script.
 ```
 
 For example
 
+```sh
+conda_to_docker.py "/home/jari/miniconda3/envs/genomics" genomics.sif
 ```
-conda_to_singularity.py /home/sturm/.conda/envs/whatever whatever.sif
-```
-
-By default, the image will be based on CentOS 7. If you want a different base image,
-you can modify `Singularity.template`, and specify it with the `--template` argument.
-
 
 ## How it works
 
@@ -50,31 +47,20 @@ but breaks in some (especially for old environments that have a long history
 of manually installing stuff through R or pip).
 
 This is an other appraoch where the issue is solved by copying the conda environment
-with its full absolute path to the container and append a line to the Singularity environment
-file that activates the conda environment from that path once the container is started:
+with its full absolute path to the container.
 
+After the container is started, a command should be given to activate the conda environment
+from that path.
+
+```sh
+source /opt/conda/bin/activate {conda_env}
 ```
-echo "source /opt/conda/bin/activate {conda_env}" >>$SINGULARITY_ENVIRONMENT
+
+For example
+
+```sh
+source /opt/conda/bin/activate /home/jari/miniconda3/envs/genomics
 ```
 
-Naively, this could be solved with `%files /path/to/env`, however, this dereferences
-all symbolic links, which breaks some environments. Instead, I build a tar archive
-that keeps all symbolic links intact *within* the conda environment, but at the
-same time include all files that are outside the conda env, but referenced
-by a symbolic link.
-
-I don't have a lot of experience yet if it is really more stable than conda-pack
-or just happens to fail in different cases.
-
-## Where's the conda-pack/Docker version?
-
-This is an updated version of my scripts that works without `conda-pack` and turned out
-to work even in cases where the conda-pack variant failed. It works only with Singularity at the moment. 
-I don't see any major issues porting the new approach to Docker, but don't have need for that myself. 
-
-If you are looking for the previous scripts based on `conda-pack`, because you need a Docker variant, or they just
-work for you, they are in the [conda-pack](conda-pack) folder with a dedicated [README](conda-pack/README.md).
-
-
-
-
+The tar archive keeps all symbolic links intact *within* the conda environment, but at the
+same time include all files that are outside the conda env, but referenced by a symbolic link.
