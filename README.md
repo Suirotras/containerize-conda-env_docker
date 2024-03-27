@@ -7,7 +7,7 @@ analysis projects. Sometimes I need to revert to install using `pip` or `R`'s
 
 To keep my code reproducible, and make sure my conda environments are portable,
 adapted code from another repository
-[https://github.com/grst/containerize-conda](https://github.com/grst/containerize-conda)
+([https://github.com/grst/containerize-conda](https://github.com/grst/containerize-conda))
 to containerize my conda environments.
 
 Using the instructions below allows to package an existing environment
